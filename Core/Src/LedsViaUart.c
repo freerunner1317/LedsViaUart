@@ -60,8 +60,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			  LastCharCount = 0;
 		  }else{
 			  if (LastCharCount < 100){
-				  RxMessage[LastCharCount++] = RxBuf[0];
-				  HAL_UART_Transmit_IT(&huart2, ParsingMes, strlen((const char*)ParsingMes));
+				  if (RxBuf[0] >= 0x30 && RxBuf[0] <= 0x39){
+					  RxMessage[LastCharCount++] = RxBuf[0];
+				  }else{
+					  HAL_UART_Transmit_IT(&huart2, WrongSeqMes, strlen((const char*)WrongSeqMes));
+					  ParsingSTATUS = WAITING;
+					  LastCharCount = 0;
+				  }
+				  //HAL_UART_Transmit_IT(&huart2, ParsingMes, strlen((const char*)ParsingMes));
 			  } else{
 				  HAL_UART_Transmit_IT(&huart2, OutOfRangeMes, strlen((const char*)OutOfRangeMes));
 				  LastCharCount = 0;
