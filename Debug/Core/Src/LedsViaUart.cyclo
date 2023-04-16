@@ -1,0 +1,3 @@
+LedsViaUart.c:22:6:TimerBlinkIT	1
+LedsViaUart.c:27:6:HAL_UART_RxCpltCallback	7
+LedsViaUart.c:64:6:ChangeDelayBlinking	2

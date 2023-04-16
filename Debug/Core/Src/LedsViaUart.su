@@ -1,0 +1,3 @@
+../Core/Src/LedsViaUart.c:22:6:TimerBlinkIT	8	static
+../Core/Src/LedsViaUart.c:27:6:HAL_UART_RxCpltCallback	16	static
+../Core/Src/LedsViaUart.c:64:6:ChangeDelayBlinking	8	static
