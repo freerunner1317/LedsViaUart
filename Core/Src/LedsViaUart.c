@@ -4,20 +4,29 @@
 #include "usart.h"
 #include "gpio.h"
 #include <stdlib.h>
+#include <stdio.h>
+
+
 
 #define FIRSTCHAR ':'
 #define LASTCHAR ';'
+#define MAXPERIOD 6
+#define MAXRxMessage 100
+#define MAXRxBuf 1
 
-extern uint8_t RxBuf[1];
-extern uint8_t RxMessage[100];
+extern uint8_t RxBuf[MAXRxBuf];
+extern uint8_t RxMessage[MAXRxMessage];
+
+
 uint8_t LastCharCount = 0;
 
 
-uint8_t WrongSeqMes[50] = "WrongSeq\n";
-uint8_t RightSeqMes[50] = "RightSeq\n";
-uint8_t OutOfRangeMes[50] = "OutOfRange\n";
-uint8_t EndOfParsingMes[50] = "EndOfParsing\n";
-uint8_t ParsingMes[50] = "Parsing";
+
+uint8_t WrongSeqMes[20] = "WrongSeq \n";
+uint8_t RightSeqMes[20] = "RightSeq \n";
+uint8_t OutOfRangeMes[20] = "OutOfRange \n";
+uint8_t EndOfParsingMes[5] = "End\n";
+uint8_t ParsingMes[20] = "Parsing \n";
 int CurrentPeriod = 1000;
 
 void TimerBlinkIT(){
@@ -28,63 +37,68 @@ void TimerBlinkIT(){
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
   if(huart == &huart2) {
-	  //HAL_UART_Transmit_IT(&huart2, buf, 1);
-	  //HAL_UART_Transmit(&huart2, test, strlen((const char*)test), 100);
 	  HAL_UART_Receive_IT(&huart2, RxBuf, 1);
+	  ParsingProtocol();
+  }
+}
 
-//	  if (RxBuf[0] == ':' && RxBuf[3] == ';'){
-//		  HAL_UART_Transmit(&huart2, RightSeqMes, strlen((const char*)RightSeqMes), 100);
-//		  HAL_FLASH_Program_IT(FLASH_CR_PG, 0x0801F800, 1);
-//	  }else{
-//		  HAL_UART_Transmit(&huart2, WrongSeqMes, strlen((const char*)WrongSeqMes), 100);
-//	  }
-	  //HAL_UART_Transmit(&huart2, ParsingMes, strlen((const char*)ParsingMes), 100);
-	  if (ParsingSTATUS == WAITING){
-		  if(RxBuf[0] == FIRSTCHAR){
-			  ParsingSTATUS = PARSING;
-			  HAL_UART_Transmit_IT(&huart2, ParsingMes, strlen((const char*)ParsingMes));
-		  }else{
-			  HAL_UART_Transmit_IT(&huart2, WrongSeqMes, strlen((const char*)WrongSeqMes));
-		  }
-	  }else if(ParsingSTATUS == PARSING){
-		  if(RxBuf[0] == LASTCHAR){
-			  ParsingSTATUS = EndOfParsing;
-			  //HAL_UART_Transmit_IT(&huart2, RxMessage, strlen((const char*)RxMessage));
-			  //HAL_UART_Transmit_IT(&huart2, EndOfParsingMes, strlen((const char*)EndOfParsingMes));
+void ParsingProtocol(){
+	if (ParsingSTATUS == WAITING){
+	  if(RxBuf[0] == FIRSTCHAR){
+		  ParsingSTATUS = PARSING;
 
-			  uint8_t temp[50] = {};
-			  strcat((char *)temp, (char *)EndOfParsingMes);
-			  strcat((char *)temp, (char *)RxMessage);
+	  }else{
+		  while(HAL_UART_GetState(&huart2) == HAL_UART_STATE_BUSY_TX);
+		  HAL_UART_Transmit_IT(&huart2, WrongSeqMes, strlen((const char*)WrongSeqMes));
+	  }
+	}else if(ParsingSTATUS == PARSING){
+	  if(RxBuf[0] == LASTCHAR){
+		  ParsingSTATUS = EndOfParsing;
+		  LastCharCount = 0;
 
-			  HAL_UART_Transmit_IT(&huart2, temp, strlen((const char*)temp));
-			  LastCharCount = 0;
-		  }else{
-			  if (LastCharCount < 100){
-				  if (RxBuf[0] >= 0x30 && RxBuf[0] <= 0x39){
-					  RxMessage[LastCharCount++] = RxBuf[0];
-				  }else{
-					  HAL_UART_Transmit_IT(&huart2, WrongSeqMes, strlen((const char*)WrongSeqMes));
-					  ParsingSTATUS = WAITING;
-					  LastCharCount = 0;
-				  }
-				  //HAL_UART_Transmit_IT(&huart2, ParsingMes, strlen((const char*)ParsingMes));
-			  } else{
-				  HAL_UART_Transmit_IT(&huart2, OutOfRangeMes, strlen((const char*)OutOfRangeMes));
-				  LastCharCount = 0;
+	  }else{
+		  if (LastCharCount < MAXPERIOD){
+			  if (RxBuf[0] >= 0x30 && RxBuf[0] <= 0x39){
+				  RxMessage[LastCharCount++] = RxBuf[0];
+			  }else{
 				  ParsingSTATUS = WAITING;
+				  LastCharCount = 0;
 			  }
+		  } else{
+			  LastCharCount = 0;
+			  ParsingSTATUS = WAITING;
 		  }
 	  }
-  }
+	}
 }
 
 
 void ChangeDelayBlinking(){
 	if (ParsingSTATUS == EndOfParsing){
-		 ParsingSTATUS = WAITING;
+		ParsingSTATUS = WAITING;
 
-		 int period = atoi((const char*)RxMessage);
-		 TIM6->ARR = period;
+		int channel = RxMessage[0] - '0';
+		char periodChar[MAXPERIOD] = {};
+		uint8_t temp[200] = "";
+
+		for (int i = 1; i < strlen((const char*)RxMessage); i++){
+		 periodChar[i - 1] = RxMessage[i];
+		}
+		int periodInt = atoi(periodChar);
+
+
+		sprintf((char *)temp, "Status: %s RxMes: %s \n",(char *)EndOfParsingMes, (char *)RxMessage);
+		while(HAL_UART_GetState(&huart2) == HAL_UART_STATE_BUSY_TX);
+		HAL_UART_Transmit_IT(&huart2, temp, strlen((const char*)temp));
+
+		if (channel == 0){
+			htim6.Init.Period = periodInt;
+			HAL_TIM_Base_Init(&htim6);
+			HAL_TIM_Base_Start_IT(&htim6);
+		}else if(channel == 1){
+
+		}
+		memset(RxMessage, 0, MAXRxMessage*sizeof(RxMessage[0]));
 	}
 }
 

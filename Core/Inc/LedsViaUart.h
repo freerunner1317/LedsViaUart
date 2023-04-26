@@ -8,6 +8,8 @@ extern "C" {
 
 void ChangeDelayBlinking();
 
+void ParsingProtocol();
+
 typedef enum
 {
 	WAITING = 		0x00,

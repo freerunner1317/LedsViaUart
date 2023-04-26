@@ -45,14 +45,18 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t RxBuf[1];
-uint8_t RxMessage[50];
+#define MAXRxMessage 100
+#define MAXRxBuf 1
+
+uint8_t RxBuf[MAXRxBuf];
+uint8_t RxMessage[MAXRxMessage];
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
 
 /* USER CODE END PFP */
 
